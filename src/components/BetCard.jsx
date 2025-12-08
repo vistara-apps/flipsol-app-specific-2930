@@ -14,10 +14,9 @@ const BetCard = ({ side }) => {
   const sideTotal = isHeads ? roundState.headsTotal : roundState.tailsTotal;
   const otherTotal = isHeads ? roundState.tailsTotal : roundState.headsTotal;
   const Icon = isHeads ? ArrowUp : ArrowDown;
-  const bgColor = isHeads ? 'from-heads/20 to-heads/5' : 'from-tails/20 to-tails/5';
-  const borderColor = isHeads ? 'border-heads/30' : 'border-tails/30';
+  const cardClass = isHeads ? 'card-heads' : 'card-tails';
   const textColor = isHeads ? 'text-heads' : 'text-tails';
-  const buttonBg = isHeads ? 'bg-heads hover:bg-heads/90' : 'bg-tails hover:bg-tails/90';
+  const buttonClass = isHeads ? 'btn-heads' : 'btn-tails';
 
   const disabled = userBet !== null || roundState.settled;
 
@@ -47,45 +46,54 @@ const BetCard = ({ side }) => {
   };
 
   return (
-    <div className={`card bg-gradient-to-br ${bgColor} border ${borderColor} ${disabled ? 'opacity-50' : ''}`}>
-      <div className="flex items-center justify-between mb-6">
+    <div 
+      className={`${cardClass} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      role="region"
+      aria-label={`${sideName} betting card`}
+    >
+      <div className="flex items-center justify-between mb-lg">
         <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl ${isHeads ? 'bg-heads/20' : 'bg-tails/20'} flex items-center justify-center`}>
+          <div 
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg ${isHeads ? 'bg-heads/20' : 'bg-tails/20'} flex items-center justify-center`}
+            aria-hidden="true"
+          >
             <Icon className={`w-6 h-6 sm:w-7 sm:h-7 ${textColor}`} />
           </div>
           <div>
-            <h3 className={`text-xl sm:text-2xl font-bold ${textColor}`}>{sideName}</h3>
-            <p className="text-xs sm:text-sm text-text-muted">Choose your side</p>
+            <h3 className={`text-h2 ${textColor}`}>{sideName}</h3>
+            <p className="text-caption text-text-muted">Choose your side</p>
           </div>
         </div>
         
         <div className="text-right">
-          <div className="text-xs sm:text-sm text-text-muted">Total Bets</div>
+          <div className="text-caption text-text-muted">Total Bets</div>
           <div className="text-lg sm:text-xl font-bold">{sideTotal.toFixed(2)} SOL</div>
         </div>
       </div>
 
       {userBet && userBet.side === side ? (
-        <div className="bg-surface-hover rounded-xl p-4 text-center">
-          <div className="text-sm text-text-muted mb-1">Your Bet</div>
-          <div className="text-2xl font-bold">{userBet.amount.toFixed(2)} SOL</div>
+        <div className="bg-surface-hover rounded-lg p-md text-center" role="status">
+          <div className="text-caption text-text-muted mb-1">Your Bet</div>
+          <div className="text-h2">{userBet.amount.toFixed(2)} SOL</div>
         </div>
       ) : !showInput ? (
         <button
           onClick={() => setShowInput(true)}
           disabled={disabled}
-          className={`w-full ${buttonBg} text-white font-semibold py-3 sm:py-4 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`w-full ${buttonClass} py-3 sm:py-4 disabled:opacity-50 disabled:cursor-not-allowed`}
+          aria-label={`Place bet on ${sideName}`}
         >
           Place Bet on {sideName}
         </button>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-md" role="form" aria-label={`${sideName} betting form`}>
           <div className="flex gap-2">
             {presetAmounts.map((preset) => (
               <button
                 key={preset}
                 onClick={() => setAmount(preset.toString())}
                 className="flex-1 btn-secondary py-2 text-sm"
+                aria-label={`Bet ${preset} SOL`}
               >
                 {preset} SOL
               </button>
@@ -101,10 +109,12 @@ const BetCard = ({ side }) => {
               step="0.1"
               min="0.1"
               max={balance}
-              className="w-full bg-surface-hover border border-border rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+              className="input"
+              aria-label="Custom bet amount in SOL"
+              aria-describedby={amount ? "payout-estimate" : undefined}
             />
             {amount && (
-              <div className="mt-2 text-sm text-text-muted text-center">
+              <div id="payout-estimate" className="mt-2 text-caption text-text-muted text-center">
                 Estimated payout: {estimatedPayout()} SOL
               </div>
             )}
@@ -117,13 +127,15 @@ const BetCard = ({ side }) => {
                 setAmount('');
               }}
               className="flex-1 btn-secondary py-3"
+              aria-label="Cancel bet"
             >
               Cancel
             </button>
             <button
               onClick={handleBet}
               disabled={!amount || parseFloat(amount) <= 0 || parseFloat(amount) > balance}
-              className={`flex-1 ${buttonBg} text-white font-semibold py-3 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`flex-1 ${buttonClass} py-3 disabled:opacity-50 disabled:cursor-not-allowed`}
+              aria-label={`Confirm bet of ${amount || '0'} SOL on ${sideName}`}
             >
               Confirm Bet
             </button>

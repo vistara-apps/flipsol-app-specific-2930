@@ -16,23 +16,46 @@ function App() {
       <div className="min-h-screen bg-bg">
         <Header />
         
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <main className="container-app py-lg sm:py-xl" role="main">
           <JackpotBanner />
           
-          <div className="mt-6 sm:mt-8">
+          <div className="mt-lg sm:mt-xl">
             <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
             
-            <div className="mt-6 sm:mt-8">
+            <div className="mt-lg sm:mt-xl">
               {activeTab === 'play' && (
-                <div className="space-y-6 sm:space-y-8">
+                <div 
+                  className="space-y-lg sm:space-y-xl animate-slide-in"
+                  role="tabpanel"
+                  id="play-panel"
+                  aria-labelledby="play-tab"
+                >
                   <RoundTimer />
                   <BettingArea />
                 </div>
               )}
               
-              {activeTab === 'history' && <History />}
+              {activeTab === 'history' && (
+                <div
+                  className="animate-slide-in"
+                  role="tabpanel"
+                  id="history-panel"
+                  aria-labelledby="history-tab"
+                >
+                  <History />
+                </div>
+              )}
               
-              {activeTab === 'leaderboard' && <Leaderboard />}
+              {activeTab === 'leaderboard' && (
+                <div
+                  className="animate-slide-in"
+                  role="tabpanel"
+                  id="leaderboard-panel"
+                  aria-labelledby="leaderboard-tab"
+                >
+                  <Leaderboard />
+                </div>
+              )}
             </div>
           </div>
         </main>

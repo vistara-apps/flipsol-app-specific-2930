@@ -3,6 +3,42 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Colors */
+    --color-primary: 266 100% 60%;
+    --color-accent: 142 76% 36%;
+    --color-danger: 0 84% 60%;
+    --color-bg: 240 10% 4%;
+    --color-surface: 240 6% 10%;
+    --color-surface-hover: 240 6% 14%;
+    --color-text: 0 0% 98%;
+    --color-text-muted: 240 5% 64%;
+    --color-border: 240 6% 18%;
+    --color-heads: 211 100% 50%;
+    --color-tails: 25 95% 53%;
+    --color-jackpot: 45 93% 47%;
+
+    /* Spacing */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+
+    /* Motion */
+    --duration-fast: 150ms;
+    --duration-base: 250ms;
+    --duration-slow: 400ms;
+    --easing: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
   * {
     @apply border-border;
   }
@@ -16,22 +52,148 @@
 }
 
 @layer components {
+  /* Typography Classes */
+  .text-display {
+    @apply font-semibold text-5xl leading-tight tracking-tight;
+  }
+
+  .text-h1 {
+    @apply font-bold text-4xl leading-tight;
+  }
+
+  .text-h2 {
+    @apply font-semibold text-2xl leading-snug;
+  }
+
+  .text-body {
+    @apply font-normal text-base leading-7;
+  }
+
+  .text-caption {
+    @apply font-medium text-sm leading-5;
+  }
+
+  .text-mono {
+    @apply font-mono text-sm;
+  }
+
+  /* Button Components */
   .btn-primary {
-    @apply px-6 py-3 rounded-xl font-semibold transition-all duration-200;
+    @apply px-6 py-3 rounded-xl font-semibold;
     @apply bg-primary hover:bg-primary/90 active:scale-95;
     @apply shadow-glow hover:shadow-glow;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-bg;
+    transition: all var(--duration-base) var(--easing);
   }
   
   .btn-secondary {
-    @apply px-6 py-3 rounded-xl font-semibold transition-all duration-200;
+    @apply px-6 py-3 rounded-xl font-semibold;
     @apply bg-surface hover:bg-surface-hover active:scale-95;
-    border: 1px solid;
-    border-color: rgb(var(--border-rgb, 45 45 54));
+    @apply border border-border;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-bg;
+    transition: all var(--duration-base) var(--easing);
+  }
+
+  .btn-heads {
+    @apply px-6 py-3 rounded-xl font-semibold text-white;
+    @apply bg-heads hover:bg-heads/90 active:scale-95;
+    @apply focus:outline-none focus:ring-2 focus:ring-heads focus:ring-offset-2 focus:ring-offset-bg;
+    transition: all var(--duration-base) var(--easing);
+  }
+
+  .btn-tails {
+    @apply px-6 py-3 rounded-xl font-semibold text-white;
+    @apply bg-tails hover:bg-tails/90 active:scale-95;
+    @apply focus:outline-none focus:ring-2 focus:ring-tails focus:ring-offset-2 focus:ring-offset-bg;
+    transition: all var(--duration-base) var(--easing);
   }
   
+  /* Card Components */
   .card {
-    @apply bg-surface rounded-2xl p-6 shadow-card;
-    border: 1px solid;
-    border-color: rgb(var(--border-rgb, 45 45 54));
+    @apply bg-surface rounded-2xl p-6 shadow-card border border-border;
+    animation: slide-in var(--duration-base) var(--easing);
+  }
+
+  .card-heads {
+    @apply card bg-gradient-to-br from-heads/20 to-heads/5 border-heads/30;
+  }
+
+  .card-tails {
+    @apply card bg-gradient-to-br from-tails/20 to-tails/5 border-tails/30;
+  }
+
+  .card-won {
+    @apply card bg-gradient-to-br from-accent/20 to-accent/5 border-2 border-accent/50;
+  }
+
+  .card-lost {
+    @apply card bg-gradient-to-br from-danger/20 to-danger/5 border-2 border-danger/50;
+  }
+
+  .card-pending {
+    @apply card border-2 border-jackpot/50;
+  }
+
+  /* Input Components */
+  .input {
+    @apply w-full bg-surface-hover border border-border rounded-xl px-4 py-3;
+    @apply text-base text-text placeholder:text-text-muted;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+    transition: all var(--duration-fast) var(--easing);
+  }
+
+  /* Utility Classes */
+  .container-app {
+    @apply max-w-7xl mx-auto px-6 lg:px-8;
+  }
+
+  .gutter-desktop {
+    @apply gap-6;
+  }
+
+  .gutter-mobile {
+    @apply gap-4;
+  }
+
+  /* Screen Reader Only */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .sr-only-focusable:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
+/* Ensure smooth scrolling */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
