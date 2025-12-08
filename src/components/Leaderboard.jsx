@@ -8,47 +8,78 @@ const Leaderboard = () => {
   const getRankIcon = (rank) => {
     switch (rank) {
       case 1:
-        return <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-jackpot" />;
+        return { 
+          icon: <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-jackpot" />,
+          label: 'Gold medal - First place',
+          color: 'text-jackpot'
+        };
       case 2:
-        return <Medal className="w-5 h-5 sm:w-6 sm:h-6 text-text-muted" />;
+        return { 
+          icon: <Medal className="w-5 h-5 sm:w-6 sm:h-6 text-text-muted" />,
+          label: 'Silver medal - Second place',
+          color: 'text-text-muted'
+        };
       case 3:
-        return <Award className="w-5 h-5 sm:w-6 sm:h-6 text-tails" />;
+        return { 
+          icon: <Award className="w-5 h-5 sm:w-6 sm:h-6 text-tails" />,
+          label: 'Bronze medal - Third place',
+          color: 'text-tails'
+        };
       default:
-        return <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-surface-hover flex items-center justify-center text-xs sm:text-sm font-bold">{rank}</div>;
+        return { 
+          icon: <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-surface-hover flex items-center justify-center text-xs sm:text-sm font-bold">{rank}</div>,
+          label: `Rank ${rank}`,
+          color: 'text-text'
+        };
     }
   };
 
+  const getBorderClass = (rank) => {
+    if (rank === 1) return 'border-2 border-jackpot/50';
+    if (rank === 2) return 'border-2 border-text-muted/30';
+    if (rank === 3) return 'border-2 border-tails/50';
+    return '';
+  };
+
   return (
-    <div className="space-y-4">
-      {leaderboard.map((player) => (
-        <div
-          key={player.address}
-          className={`card hover:bg-surface-hover transition-colors ${
-            player.rank <= 3 ? 'border-2' : ''
-          } ${
-            player.rank === 1 ? 'border-jackpot/50' :
-            player.rank === 2 ? 'border-text-muted/50' :
-            player.rank === 3 ? 'border-tails/50' : ''
-          }`}
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex-shrink-0">
-                {getRankIcon(player.rank)}
+    <div 
+      className="space-y-md"
+      role="region"
+      aria-label="Leaderboard"
+    >
+      {leaderboard.map((player, index) => {
+        const rankInfo = getRankIcon(player.rank);
+        
+        return (
+          <article
+            key={player.address}
+            className={`card hover:bg-surface-hover transition-colors duration-fast ${getBorderClass(player.rank)}`}
+            aria-label={`${rankInfo.label}: ${player.address} with ${player.totalWon.toFixed(2)} SOL won`}
+          >
+            <div className="flex items-center justify-between gap-md">
+              <div className="flex items-center gap-3 sm:gap-md">
+                <div 
+                  className="flex-shrink-0"
+                  aria-hidden="true"
+                >
+                  {rankInfo.icon}
+                </div>
+                <div>
+                  <div className="text-mono font-semibold">{player.address}</div>
+                  <div className="text-caption text-text-muted">Rank #{player.rank}</div>
+                </div>
               </div>
-              <div>
-                <div className="font-mono text-sm sm:text-base font-semibold">{player.address}</div>
-                <div className="text-xs sm:text-sm text-text-muted">Rank #{player.rank}</div>
+              
+              <div className="text-right">
+                <div className="text-lg sm:text-2xl font-bold text-accent">
+                  {player.totalWon.toFixed(2)} SOL
+                </div>
+                <div className="text-caption text-text-muted">Total Won</div>
               </div>
             </div>
-            
-            <div className="text-right">
-              <div className="text-lg sm:text-2xl font-bold text-accent">{player.totalWon.toFixed(2)} SOL</div>
-              <div className="text-xs sm:text-sm text-text-muted">Total Won</div>
-            </div>
-          </div>
-        </div>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 };
