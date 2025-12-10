@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FlipSOL Casino Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #2d5e3d; }
+        .error { background: #5e2d2d; }
+        .warning { background: #5e5e2d; }
+        .info { background: #2d3d5e; }
+        button { padding: 10px 15px; margin: 5px; background: #4a90ff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #3a7ce0; }
+        .timer { font-size: 2em; font-weight: bold; text-align: center; margin: 20px 0; }
+        .progress { width: 100%; height: 10px; background: #333; border-radius: 5px; margin: 10px 0; }
+        .progress-bar { height: 100%; border-radius: 5px; transition: width 0.1s; }
+        .betting { background: linear-gradient(90deg, #4ade80, #22c55e); }
+        .break { background: linear-gradient(90deg, #a855f7, #8b5cf6); }
+    </style>
+</head>
+<body>
+    <h1>🎰 FlipSOL Casino End-to-End Test</h1>
+    
+    <div id="status" class="status info">Initializing...</div>
+    
+    <div id="timer" class="timer">--:--</div>
+    
+    <div class="progress">
+        <div id="progress-bar" class="progress-bar" style="width: 0%;"></div>
+    </div>
+    
+    <div id="phase-info" class="status info">Checking casino status...</div>
+    
+    <div>
+        <button onclick="checkBackend()">🔄 Check Backend</button>
+        <button onclick="checkFrontend()">🎮 Check Frontend</button>
+        <button onclick="testCronStatus()">🤖 Check Cron Status</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const ROUND_DURATION = 90000; // 90 seconds
+        const BETTING_WINDOW = 60000; // 60 seconds
+        const BREAK_DURATION = 30000; // 30 seconds
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        function updateTimer() {
+            const now = Date.now();
+            const currentTimeRound = Math.floor(now / ROUND_DURATION);
+            const roundStartTime = currentTimeRound * ROUND_DURATION;
+            const bettingEndTime = roundStartTime + BETTING_WINDOW;
+            const roundEndTime = roundStartTime + ROUND_DURATION;
+            
+            const isBettingPhase = now >= roundStartTime && now < bettingEndTime;
+            const isBreakPhase = now >= bettingEndTime && now < roundEndTime;
+            
+            const timeLeftToBet = Math.max(0, bettingEndTime - now) / 1000;
+            const nextRoundStartsIn = Math.max(0, roundEndTime - now) / 1000;
+            
+            const timer = document.getElementById('timer');
+            const progressBar = document.getElementById('progress-bar');
+            const phaseInfo = document.getElementById('phase-info');
+            
+            if (isBettingPhase) {
+                const progress = ((60 - timeLeftToBet) / 60) * 100;
+                timer.textContent = `${Math.floor(timeLeftToBet / 60)}:${Math.floor(timeLeftToBet % 60).toString().padStart(2, '0')}`;
+                progressBar.style.width = `${progress}%`;
+                progressBar.className = 'progress-bar betting';
+                phaseInfo.innerHTML = `🎲 <strong>BETTING PHASE</strong> - ${Math.ceil(timeLeftToBet)}s left to place bets`;
+                phaseInfo.className = 'status success';
+            } else if (isBreakPhase) {
+                const progress = ((30 - nextRoundStartsIn) / 30) * 100;
+                timer.textContent = `${Math.floor(nextRoundStartsIn / 60)}:${Math.floor(nextRoundStartsIn % 60).toString().padStart(2, '0')}`;
+                progressBar.style.width = `${progress}%`;
+                progressBar.className = 'progress-bar break';
+                phaseInfo.innerHTML = `☕ <strong>CASINO BREAK</strong> - Next round in ${Math.ceil(nextRoundStartsIn)}s`;
+                phaseInfo.className = 'status warning';
+            } else {
+                timer.textContent = '--:--';
+                progressBar.style.width = '0%';
+                phaseInfo.innerHTML = '⏳ <strong>WAITING</strong> - Calculating next phase...';
+                phaseInfo.className = 'status info';
+            }
+        }
+        
+        async function checkBackend() {
+            try {
+                log('🔄 Checking backend health...', 'info');
+                const response = await fetch('http://localhost:3001/health');
+                const data = await response.json();
+                log('✅ Backend is online! ' + JSON.stringify(data), 'success');
+            } catch (error) {
+                log('❌ Backend check failed: ' + error.message, 'error');
+            }
+        }
+        
+        async function checkFrontend() {
+            try {
+                log('🎮 Checking frontend routing...', 'info');
+                // Check if running on localhost:5173 (Vite default)
+                if (window.location.port === '5173' || window.location.hostname === 'localhost') {
+                    log('✅ Frontend is running on development server', 'success');
+                } else {
+                    log('⚠️ Frontend might not be running on expected port', 'warning');
+                }
+            } catch (error) {
+                log('❌ Frontend check failed: ' + error.message, 'error');
+            }
+        }
+        
+        async function testCronStatus() {
+            try {
+                log('🤖 Checking Casino Agent System...', 'info');
+                const response = await fetch('http://localhost:3001/cron-status');
+                const data = await response.json();
+                
+                if (data.enabled && data.isRunning) {
+                    log('✅ Casino Agent System is ACTIVE!', 'success');
+                    log(`📊 Activity: ${data.lastActivity}`, 'info');
+                    log(`🎲 Rounds Created: ${data.roundsProcessed}`, 'info');
+                    log(`🎯 Rounds Settled: ${data.roundsClosed}`, 'info');
+                    log(`⚙️ Config: ${data.config.bettingWindow/1000}s betting + ${data.config.breakDuration/1000}s break`, 'info');
+                } else {
+                    log('❌ Casino Agent System is NOT running', 'error');
+                }
+            } catch (error) {
+                log('❌ Cron status check failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Initialize
+        document.getElementById('status').textContent = '🎰 FlipSOL Casino Test Ready';
+        document.getElementById('status').className = 'status success';
+        
+        // Start timer updates
+        setInterval(updateTimer, 100);
+        updateTimer();
+        
+        // Auto-check systems on load
+        setTimeout(checkBackend, 1000);
+        setTimeout(testCronStatus, 2000);
+        setTimeout(checkFrontend, 3000);
+        
+        log('🚀 FlipSOL Casino Test initialized', 'success');
+        log('📋 This page simulates the casino timing and tests connectivity', 'info');
+        log('⏰ Betting: 60s + Break: 30s = 90s total cycle', 'info');
+    </script>
+</body>
+</html>

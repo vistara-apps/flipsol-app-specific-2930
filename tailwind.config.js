@@ -19,6 +19,11 @@ export default {
         heads: 'hsl(var(--color-heads))',
         tails: 'hsl(var(--color-tails))',
         jackpot: 'hsl(var(--color-jackpot))',
+        'casino-gold': 'hsl(var(--color-casino-gold))',
+        'casino-red': 'hsl(var(--color-casino-red))',
+        'casino-green': 'hsl(var(--color-casino-green))',
+        'luxury-bronze': 'hsl(var(--color-luxury-bronze))',
+        'luxury-platinum': 'hsl(var(--color-luxury-platinum))',
       },
       spacing: {
         'xs': 'var(--space-xs)',

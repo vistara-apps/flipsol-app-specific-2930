@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Round {
+  id            Int       @id @default(autoincrement())
+  roundId       BigInt    @unique @db.BigInt
+  headsTotal    Decimal   @db.Decimal(20, 9)
+  tailsTotal    Decimal   @db.Decimal(20, 9)
+  totalPot      Decimal   @db.Decimal(20, 9)
+  endsAt        DateTime
+  settled       Boolean   @default(false)
+  winningSide   Int?      // 0 = heads, 1 = tails
+  jackpotAmount Decimal?  @db.Decimal(20, 9)
+  jackpotTriggered Boolean @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  bets Bet[]
+
+  @@index([roundId])
+  @@index([settled])
+  @@index([endsAt])
+}
+
+model Bet {
+  id          Int      @id @default(autoincrement())
+  roundId     BigInt   @db.BigInt
+  userAddress String   @db.VarChar(44)
+  side        Int      // 0 = heads, 1 = tails
+  amount      Decimal  @db.Decimal(20, 9)
+  claimed     Boolean  @default(false)
+  payout      Decimal? @db.Decimal(20, 9)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  round Round @relation(fields: [roundId], references: [roundId])
+
+  @@unique([roundId, userAddress])
+  @@index([userAddress])
+  @@index([roundId])
+  @@index([claimed])
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  address       String   @unique @db.VarChar(44)
+  totalWon      Decimal  @default(0) @db.Decimal(20, 9)
+  totalBet      Decimal  @default(0) @db.Decimal(20, 9)
+  totalRounds   Int      @default(0)
+  wins          Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([totalWon])
+  @@index([address])
+}
+
+model Leaderboard {
+  id        Int      @id @default(autoincrement())
+  userAddress String  @db.VarChar(44)
+  totalWon   Decimal  @db.Decimal(20, 9)
+  rank       Int
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userAddress])
+  @@index([rank])
+}

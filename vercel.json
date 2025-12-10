@@ -1,0 +1,15 @@
+{
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ],
+  "env": {
+    "VITE_SOLANA_RPC_URL": "$VITE_SOLANA_RPC_URL",
+    "VITE_BACKEND_URL": "$VITE_BACKEND_URL",
+    "VITE_CONVEX_URL": "$VITE_CONVEX_URL"
+  }
+}

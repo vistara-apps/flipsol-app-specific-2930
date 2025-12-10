@@ -1,0 +1,44 @@
+{
+  "name": "flipsol-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "dev:full": "npm run build:idl && tsx watch src/index.ts",
+    "build:idl": "anchor build --idl src/idl",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "init-program": "node scripts/init-program.js",
+    "fix:jackpot": "node scripts/fix-jackpot-account.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "indexer:dev": "tsx watch src/indexer/index.ts",
+    "indexer:start": "node dist/indexer/index.js",
+    "jobs:leaderboard": "tsx src/jobs/leaderboard.ts",
+    "jobs:cleanup": "tsx src/jobs/cleanup.ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@prisma/client": "^5.9.1",
+    "@solana/web3.js": "^1.87.6",
+    "bn.js": "^5.2.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.2.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.5",
+    "@types/pg": "^8.10.9",
+    "@types/ws": "^8.5.10",
+    "prisma": "^5.9.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.3"
+  }
+}

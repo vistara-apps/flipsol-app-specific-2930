@@ -5,6 +5,16 @@ import { useGame } from '../contexts/GameContext';
 const RoundTimer = () => {
   const { currentRound, timeLeft, roundState } = useGame();
 
+  if (!roundState) {
+    return (
+      <div className="card">
+        <div className="flex items-center justify-center py-8">
+          <p className="text-text-muted">No active round</p>
+        </div>
+      </div>
+    );
+  }
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;

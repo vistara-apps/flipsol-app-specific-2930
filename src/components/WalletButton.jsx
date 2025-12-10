@@ -1,27 +1,53 @@
-import React from 'react';
-import { Wallet, LogOut } from 'lucide-react';
-import { useWallet } from '../contexts/WalletContext';
+import React, { useEffect } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { useWallet as useCustomWallet } from '../contexts/WalletContext';
+import { Wallet } from 'lucide-react';
 
 const WalletButton = () => {
-  const { connected, publicKey, balance, connect, disconnect } = useWallet();
+  const { publicKey, disconnect, connecting } = useWallet();
+  const { setVisible } = useWalletModal();
+  const { balance, updateBalance, loading } = useCustomWallet();
 
-  if (connected) {
+  useEffect(() => {
+    if (publicKey) {
+      updateBalance(publicKey);
+    }
+  }, [publicKey, updateBalance]);
+
+  const handleConnect = () => {
+    setVisible(true);
+  };
+
+  const handleDisconnect = () => {
+    disconnect();
+  };
+
+  if (publicKey) {
+    const address = publicKey.toString();
+    const shortAddress = `${address.slice(0, 4)}...${address.slice(-4)}`;
+
     return (
-      <div className="flex items-center gap-2 sm:gap-3" role="group" aria-label="Wallet information and actions">
-        <div className="hidden sm:block text-right">
-          <div className="text-mono text-text-muted" aria-label="Wallet address">{publicKey}</div>
-          <div className="text-sm sm:text-base font-semibold" aria-label={`Balance: ${balance.toFixed(2)} SOL`}>
-            {balance.toFixed(2)} SOL
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-col items-end hidden sm:flex">
+          <div className="text-sm font-semibold">{shortAddress}</div>
+          <div className="text-xs text-text-muted">
+            {loading ? '...' : `${balance.toFixed(2)} SOL`}
+          </div>
+        </div>
+        <div className="flex flex-col items-end sm:hidden">
+          <div className="text-xs font-semibold">{shortAddress}</div>
+          <div className="text-xs text-text-muted">
+            {loading ? '...' : `${balance.toFixed(2)}`}
           </div>
         </div>
         <button
-          onClick={disconnect}
-          className="btn-secondary flex items-center gap-2 text-sm sm:text-base py-2 sm:py-3 px-4 sm:px-6"
-          aria-label="Disconnect wallet"
+          onClick={handleDisconnect}
+          className="btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm whitespace-nowrap"
+          disabled={loading}
         >
-          <LogOut className="w-4 h-4" aria-hidden="true" />
           <span className="hidden sm:inline">Disconnect</span>
-          <span className="sm:hidden">Disconnect</span>
+          <span className="sm:hidden">Discon.</span>
         </button>
       </div>
     );
@@ -29,12 +55,13 @@ const WalletButton = () => {
 
   return (
     <button
-      onClick={connect}
-      className="btn-primary flex items-center gap-2 text-sm sm:text-base py-2 sm:py-3 px-4 sm:px-6"
-      aria-label="Connect Solana wallet"
+      onClick={handleConnect}
+      className="btn-primary flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm whitespace-nowrap"
+      disabled={connecting}
     >
-      <Wallet className="w-4 h-4" aria-hidden="true" />
-      <span>Connect Wallet</span>
+      <Wallet className="w-4 h-4 flex-shrink-0" />
+      <span className="hidden sm:inline">{connecting ? 'Connecting...' : 'Connect Wallet'}</span>
+      <span className="sm:hidden">{connecting ? 'Connecting...' : 'Connect'}</span>
     </button>
   );
 };
