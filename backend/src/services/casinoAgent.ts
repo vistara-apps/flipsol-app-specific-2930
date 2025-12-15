@@ -2,6 +2,7 @@ import { Connection, Keypair, PublicKey, SystemProgram, TransactionInstruction, 
 import { AnchorProvider, Program } from '@coral-xyz/anchor';
 import { logger } from './logger.js';
 import BN from 'bn.js';
+import * as crypto from 'crypto';
 
 interface RoundState {
   roundId: number;
@@ -33,9 +34,8 @@ export class FlipSOLEngine {
   private errors: string[] = [];
   private eventListeners: Set<(event: any) => void> = new Set();
 
-  private readonly ROUND_DURATION = 120000; // 120 seconds total (60s betting + 60s break)
+  private readonly ROUND_DURATION = 60000; // 60 seconds total (continuous betting, no break)
   private readonly BETTING_WINDOW = 60000; // 60 seconds betting
-  private readonly BREAK_DURATION = 60000; // 60 seconds casino break  
   private readonly CHECK_INTERVAL = 30000;  // Check every 30 seconds - less spam
 
   constructor(
@@ -62,7 +62,6 @@ export class FlipSOLEngine {
         authority: this.authority.publicKey.toString(),
         roundDuration: this.ROUND_DURATION,
         bettingWindow: this.BETTING_WINDOW,
-        breakDuration: this.BREAK_DURATION,
         checkInterval: this.CHECK_INTERVAL,
       });
     } catch (error) {
@@ -359,6 +358,154 @@ export class FlipSOLEngine {
     }
   }
 
+  private async distributeRoundWinnings(roundId: number): Promise<void> {
+    try {
+      logger.info(`💰 Starting credit distribution for round ${roundId}...`);
+      
+      // Get round state to find winning side
+      const roundState = await this.getRoundState(roundId);
+      if (!roundState || !roundState.settled) {
+        logger.warn(`Round ${roundId} not settled yet, skipping distribution`);
+        return;
+      }
+
+      const winningSide = roundState.winningSide;
+      logger.info(`🎯 Round ${roundId} winning side: ${winningSide === 0 ? 'HEADS' : 'TAILS'}`);
+
+      // Fetch all user bets for this round
+      const programAccounts = await this.connection.getProgramAccounts(this.programId, {
+        filters: [
+          {
+            memcmp: {
+              offset: 8, // Skip discriminator (8 bytes)
+              bytes: Buffer.from('user_bet').slice(0, 8), // Match user_bet discriminator
+            },
+          },
+        ],
+      });
+
+      // Filter winners (bets on winning side)
+      const winners: PublicKey[] = [];
+      for (const account of programAccounts) {
+        try {
+          // Parse user bet account (user: Pubkey, round_id: u64, side: u8, amount: u64, claimed: bool, bump: u8)
+          const data = account.account.data;
+          const user = new PublicKey(data.slice(8, 40)); // Skip discriminator
+          const roundIdFromAccount = data.readBigUInt64LE(40);
+          const side = data[48];
+          
+          // Check if this bet is for our round and on winning side
+          if (Number(roundIdFromAccount) === roundId && side === winningSide) {
+            winners.push(user);
+          }
+        } catch (err) {
+          // Skip invalid accounts
+          continue;
+        }
+      }
+
+      logger.info(`💰 Found ${winners.length} winners for round ${roundId}`);
+
+      if (winners.length === 0) {
+        logger.info(`No winners found for round ${roundId}`);
+        return;
+      }
+
+      // Distribute to each winner (parallel execution)
+      const distributionPromises = winners.map(async (user) => {
+        try {
+          return await this.distributeToCredit(roundId, user);
+        } catch (error) {
+          const err = error as Error;
+          logger.error(`Failed to distribute to user ${user.toString()}:`, err.message);
+          return null;
+        }
+      });
+
+      const results = await Promise.allSettled(distributionPromises);
+      const succeeded = results.filter(r => r.status === 'fulfilled' && r.value !== null).length;
+      const failed = results.filter(r => r.status === 'rejected' || r.value === null).length;
+
+      logger.info(`✅ Credit distribution complete for round ${roundId}: ${succeeded} succeeded, ${failed} failed`);
+    } catch (error) {
+      const err = error as Error;
+      logger.error(`Failed to distribute round ${roundId} winnings:`, err.message);
+    }
+  }
+
+  private async distributeToCredit(roundId: number, user: PublicKey): Promise<string | null> {
+    try {
+      // Initialize Anchor program if not already done
+      if (!this.program) {
+        const wallet = {
+          publicKey: this.authority.publicKey,
+          signTransaction: async (tx: Transaction) => {
+            tx.partialSign(this.authority);
+            return tx;
+          },
+          signAllTransactions: async (txs: Transaction[]) => {
+            return txs.map(tx => {
+              tx.partialSign(this.authority);
+              return tx;
+            });
+          },
+        };
+        const provider = new AnchorProvider(this.connection, wallet as any, { commitment: 'confirmed' });
+        
+        // Import IDL - we'll need to import it
+        // For now, use raw transaction approach but we need correct discriminator
+        // TODO: Import IDL and use program.methods.distributeToCredit()
+      }
+
+      const roundIdBuffer = Buffer.alloc(8);
+      roundIdBuffer.writeUInt32LE(roundId, 0);
+      
+      const globalPDA = PublicKey.findProgramAddressSync([Buffer.from('global_state')], this.programId)[0];
+      const roundPDA = PublicKey.findProgramAddressSync([Buffer.from('round'), roundIdBuffer], this.programId)[0];
+      const userBetPDA = PublicKey.findProgramAddressSync(
+        [Buffer.from('user_bet'), user.toBuffer(), roundIdBuffer],
+        this.programId
+      )[0];
+      const userCreditPDA = PublicKey.findProgramAddressSync(
+        [Buffer.from('user_credit'), user.toBuffer()],
+        this.programId
+      )[0];
+
+      // Use Anchor's discriminator calculation
+      // distribute_to_credit discriminator = first 8 bytes of sha256("global:distribute_to_credit")
+      const hash = crypto.createHash('sha256').update('global:distribute_to_credit').digest();
+      const discriminator = hash.slice(0, 8);
+
+      const instruction = new TransactionInstruction({
+        programId: this.programId,
+        keys: [
+          { pubkey: globalPDA, isSigner: false, isWritable: false },
+          { pubkey: roundPDA, isSigner: false, isWritable: true },
+          { pubkey: userBetPDA, isSigner: false, isWritable: true },
+          { pubkey: userCreditPDA, isSigner: false, isWritable: true },
+          { pubkey: this.authority.publicKey, isSigner: true, isWritable: true },
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        data: discriminator,
+      });
+
+      const transaction = new Transaction().add(instruction);
+      transaction.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash;
+      transaction.feePayer = this.authority.publicKey;
+      transaction.sign(this.authority);
+
+      const txHash = await this.connection.sendRawTransaction(transaction.serialize());
+      await this.connection.confirmTransaction(txHash, 'confirmed');
+
+      logger.info(`✅ Distributed credits to user ${user.toString()} for round ${roundId}`, { txHash });
+      return txHash;
+    } catch (error) {
+      const err = error as Error;
+      logger.error(`Failed to distribute to credit for user ${user.toString()}:`, err.message);
+      return null;
+    }
+  }
+
   private async processRoundCycle(): Promise<void> {
     try {
       const now = Date.now();
@@ -453,6 +600,13 @@ export class FlipSOLEngine {
               logger.info(`✅ Round ${currentProgramRound} settled - TX: ${txHash}`);
 
               // Settlement event is already emitted in closeRound() method
+              
+              // Distribute winnings to credit accounts (async, don't block)
+              setTimeout(() => {
+                this.distributeRoundWinnings(currentProgramRound).catch(err => {
+                  logger.error(`Failed to distribute credits for round ${currentProgramRound}:`, err);
+                });
+              }, 3000); // Wait 3s for round_state to be confirmed
             } else {
               this.lastActivity = `❌ Failed to settle Round ${currentProgramRound}`;
               logger.error(`Failed to settle Round ${currentProgramRound}`);
@@ -476,13 +630,13 @@ export class FlipSOLEngine {
 
       // 🎰 CASINO MODE: Backend only settles rounds, doesn't create them
       // Rounds are created on-demand when users place the first bet
+      // Continuous 60-second rounds with no break phase
       const currentSlot = Math.floor(now / this.ROUND_DURATION);
       const slotStartTime = currentSlot * this.ROUND_DURATION;
       const bettingEndTime = slotStartTime + this.BETTING_WINDOW;
       const slotEndTime = slotStartTime + this.ROUND_DURATION;
 
       const isBettingWindow = now >= slotStartTime && now < bettingEndTime;
-      const isBreakWindow = now >= bettingEndTime && now < slotEndTime;
 
       if (isBettingWindow) {
         if (currentProgramRound === 0) {
@@ -497,11 +651,9 @@ export class FlipSOLEngine {
             this.lastActivity = `🎰 Waiting for bets to start Round #${currentProgramRound + 1}`;
           }
         }
-      } else if (isBreakWindow) {
-        const breakTimeLeft = Math.ceil((slotEndTime - now) / 1000);
-        this.lastActivity = `☕ Casino break - ${breakTimeLeft}s until next betting window`;
       } else {
-        this.lastActivity = `⏳ Transitioning to next time slot...`;
+        // Round ended, transitioning to next (no break phase)
+        this.lastActivity = `⏳ Transitioning to next round...`;
       }
 
     } catch (error) {
